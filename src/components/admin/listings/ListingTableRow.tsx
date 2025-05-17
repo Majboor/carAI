@@ -1,10 +1,11 @@
-
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Listing } from "@/types/admin";
 import { Check, X, Star } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface ListingTableRowProps {
   listing: Listing;
@@ -13,6 +14,7 @@ interface ListingTableRowProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onShowcaseToggle?: (id: string, value: boolean) => void;
+  onFeaturedToggle?: (id: string, value: boolean) => void;
 }
 
 export const ListingTableRow = ({ 
@@ -21,8 +23,21 @@ export const ListingTableRow = ({
   onDelete,
   onApprove,
   onReject,
-  onShowcaseToggle
+  onShowcaseToggle,
+  onFeaturedToggle
 }: ListingTableRowProps) => {
+  const [isLoading, setIsLoading] = useState<{
+    approve: boolean;
+    reject: boolean;
+    showcase: boolean;
+    featured: boolean;
+  }>({
+    approve: false,
+    reject: false,
+    showcase: false,
+    featured: false
+  });
+
   const getStatusBadge = () => {
     switch(listing.status) {
       case 'pending':
@@ -38,6 +53,87 @@ export const ListingTableRow = ({
 
   const isPremium = listing.package_level === 3;
   const isShowcase = listing.showcase === true;
+  const isFeatured = listing.featured === true;
+  
+  const handleApprove = async (id: string) => {
+    try {
+      setIsLoading(prev => ({ ...prev, approve: true }));
+      console.log(`Approve button clicked for listing ${id}`);
+      
+      if (onApprove) {
+        await onApprove(id);
+      }
+    } catch (error) {
+      console.error("Error in approve handler:", error);
+      toast({
+        title: "Error",
+        description: "Failed to approve listing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, approve: false }));
+    }
+  };
+  
+  const handleReject = async (id: string) => {
+    try {
+      setIsLoading(prev => ({ ...prev, reject: true }));
+      console.log(`Reject button clicked for listing ${id}`);
+      
+      if (onReject) {
+        await onReject(id);
+      }
+    } catch (error) {
+      console.error("Error in reject handler:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject listing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, reject: false }));
+    }
+  };
+  
+  const handleShowcaseToggle = async (id: string, value: boolean) => {
+    try {
+      setIsLoading(prev => ({ ...prev, showcase: true }));
+      console.log(`Showcase toggle clicked for listing ${id}, value: ${value}`);
+      
+      if (onShowcaseToggle) {
+        await onShowcaseToggle(id, value);
+      }
+    } catch (error) {
+      console.error("Error in showcase toggle handler:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update showcase status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, showcase: false }));
+    }
+  };
+
+  const handleFeaturedToggle = async (id: string, value: boolean) => {
+    try {
+      setIsLoading(prev => ({ ...prev, featured: true }));
+      console.log(`Featured toggle clicked for listing ${id}, value: ${value}`);
+      
+      if (onFeaturedToggle) {
+        await onFeaturedToggle(id, value);
+      }
+    } catch (error) {
+      console.error("Error in featured toggle handler:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update featured status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, featured: false }));
+    }
+  };
 
   return (
     <TableRow key={listing.id}>
@@ -47,6 +143,7 @@ export const ListingTableRow = ({
           <div className="flex gap-1">
             {isPremium && <Badge variant="premium">Premium</Badge>}
             {isShowcase && <Badge variant="showcase">Showcase</Badge>}
+            {isFeatured && <Badge variant="secondary">Featured</Badge>}
           </div>
         </div>
       </TableCell>
@@ -58,45 +155,85 @@ export const ListingTableRow = ({
       <TableCell>{listing.user_email || "Unknown"}</TableCell>
       <TableCell>
         <div className="flex gap-1 flex-wrap">
-          {/* Show approve button for both pending and rejected listings */}
-          {(listing.status === 'pending' || listing.status === 'rejected') && onApprove && (
+          {/* Only show approve button for pending listings */}
+          {listing.status === 'pending' && onApprove && (
             <Button 
               variant="outline" 
               size="sm"
               className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
-              onClick={() => onApprove(listing.id)}
+              onClick={() => handleApprove(listing.id)}
+              disabled={isLoading.approve}
             >
-              <Check className="h-4 w-4 mr-1" /> Approve
+              <Check className="h-4 w-4 mr-1" /> {isLoading.approve ? 'Processing...' : 'Approve'}
             </Button>
           )}
           
-          {/* Show reject button only for pending listings */}
+          {/* Only show reject button for pending listings */}
           {listing.status === 'pending' && onReject && (
             <Button 
               variant="outline" 
               size="sm"
               className="bg-red-100 hover:bg-red-200 text-red-800 border-red-300"
-              onClick={() => onReject(listing.id)}
+              onClick={() => handleReject(listing.id)}
+              disabled={isLoading.reject}
             >
-              <X className="h-4 w-4 mr-1" /> Reject
+              <X className="h-4 w-4 mr-1" /> {isLoading.reject ? 'Processing...' : 'Reject'}
             </Button>
           )}
           
-          {/* Showcase toggle - only for approved listings */}
-          {listing.status === 'approved' && onShowcaseToggle && (
-            <div className="flex items-center gap-1 ml-1">
-              <Switch 
-                id={`showcase-${listing.id}`}
-                checked={isShowcase} 
-                onCheckedChange={(checked) => onShowcaseToggle(listing.id, checked)}
-                className="data-[state=checked]:bg-[#007ac8]"
-              />
-              <label 
-                htmlFor={`showcase-${listing.id}`} 
-                className="text-xs whitespace-nowrap cursor-pointer"
-              >
-                Showcase
-              </label>
+          {/* For rejected listings, show only approve button to allow re-approval */}
+          {listing.status === 'rejected' && onApprove && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
+              onClick={() => handleApprove(listing.id)}
+              disabled={isLoading.approve}
+            >
+              <Check className="h-4 w-4 mr-1" /> {isLoading.approve ? 'Processing...' : 'Approve'}
+            </Button>
+          )}
+          
+          {/* Toggles - only for approved listings */}
+          {listing.status === 'approved' && (
+            <div className="flex flex-col gap-1 ml-1">
+              {/* Showcase toggle */}
+              {onShowcaseToggle && (
+                <div className="flex items-center gap-1">
+                  <Switch 
+                    id={`showcase-${listing.id}`}
+                    checked={isShowcase} 
+                    onCheckedChange={(checked) => handleShowcaseToggle(listing.id, checked)}
+                    className="data-[state=checked]:bg-[#007ac8]"
+                    disabled={isLoading.showcase}
+                  />
+                  <label 
+                    htmlFor={`showcase-${listing.id}`} 
+                    className="text-xs whitespace-nowrap cursor-pointer"
+                  >
+                    {isLoading.showcase ? 'Updating...' : 'Showcase'}
+                  </label>
+                </div>
+              )}
+              
+              {/* Featured toggle */}
+              {onFeaturedToggle && (
+                <div className="flex items-center gap-1">
+                  <Switch 
+                    id={`featured-${listing.id}`}
+                    checked={isFeatured} 
+                    onCheckedChange={(checked) => handleFeaturedToggle(listing.id, checked)}
+                    className="data-[state=checked]:bg-[#e9542f]"
+                    disabled={isLoading.featured}
+                  />
+                  <label 
+                    htmlFor={`featured-${listing.id}`} 
+                    className="text-xs whitespace-nowrap cursor-pointer"
+                  >
+                    {isLoading.featured ? 'Updating...' : 'Featured'}
+                  </label>
+                </div>
+              )}
             </div>
           )}
           
