@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,8 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bell, Send, Clock, List } from "lucide-react";
+import { Bell, Send, Clock, List, InfoIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import NotificationsTable from "./NotificationsTable";
 
 const locations = [
@@ -47,6 +47,7 @@ export default function AdminNotifications() {
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState<string>("0"); // Default: no expiration
   const [customDuration, setCustomDuration] = useState<string>(""); // For custom duration input
+  const [showInfoAlert, setShowInfoAlert] = useState(true);
 
   const handleLocationChange = (value: string) => {
     if (selectedLocations.includes(value)) {
@@ -149,7 +150,9 @@ export default function AdminNotifications() {
       
       toast({
         title: "Success",
-        description: "Notification sent successfully",
+        description: isGlobal 
+          ? "Global notification sent to all users" 
+          : `Notification sent to users in selected locations: ${selectedLocations.join(", ")}`,
       });
       
       // Reset form
@@ -198,6 +201,25 @@ export default function AdminNotifications() {
           </TabsList>
           
           <TabsContent value="send" className="space-y-4">
+            {showInfoAlert && (
+              <Alert variant="default" className="mb-4 bg-blue-50 border-blue-200">
+                <InfoIcon className="h-4 w-4 text-blue-500" />
+                <AlertTitle>Notification System Updated</AlertTitle>
+                <AlertDescription>
+                  The notification system now ensures all users receive notifications. Global notifications are sent to all users, 
+                  while location-based notifications are sent only to users who have selected matching locations in their profiles.
+                </AlertDescription>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowInfoAlert(false)}
+                  className="mt-2"
+                >
+                  Dismiss
+                </Button>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Notification Title</Label>
